@@ -1,0 +1,15 @@
+order_id,customer_id,order_date,ship_date,region,category,quantity,unit_price,status
+ORD-1001,c-224,2026-05-01,2026-05-03,NE,software,2,129.00,Delivered
+ORD-1002,c-118,2026-05-01,2026-05-07,Southeast,hardware,1,899.00,shipped
+ORD-1003,c-507,2026-05-02,2026-05-02,West,cloud services,4,74.50,processing
+ORD-1004,c-331,2026-05-03,2026-05-01,Midwest,software,1,249.00,Delivered
+ORD-1005,c-224,2026-05-04,2026-05-08,North East,training,3,159.00,Delivered
+ORD-1006,c-902,2026-05-05,2026-05-06,SE,hardware,0,349.99,Returned
+ORD-1007,c-611,2026-05-06,2026-05-12,West,cloud services,2,$199.50,Shipped
+ORD-1008,c-118,2026-05-07,2026-05-10,Midwest,software,5,89.00,Delivered
+ORD-1009,c-764,2026-05-09,2026-05-11,Northeast,hardware,1,1099.00,Delivered
+ORD-1010,c-344,2026-05-10,2026-05-16,Southeast,training,2,199.00,Cancelled
+ORD-1011,c-615,2026-05-11,2026-05-13,West,software,1,149.00,packed
+ORD-1012,c-732,2026-05-12,not-a-date,Midwest,hardware,2,449.00,Delivered
+ORD-1008,c-118,2026-05-07,2026-05-10,Midwest,software,5,89.00,Delivered
+,c-888,2026-05-14,2026-05-18,Southeast,cloud services,2,299.00,Processing

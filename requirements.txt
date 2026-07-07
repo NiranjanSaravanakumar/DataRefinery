@@ -1,0 +1,28 @@
+# ==============================================================================
+# BB DataRefinery — Python Dependencies
+# ==============================================================================
+# This project uses ONLY the Python standard library for its core ETL pipeline.
+# No third-party runtime packages are required.
+#
+# Standard library modules used internally:
+#   csv, json, dataclasses, datetime, decimal, pathlib, typing, argparse
+#
+# Python version requirement: >=3.11
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Development & Testing Dependencies
+# Install with: pip install -r requirements.txt
+# ------------------------------------------------------------------------------
+
+# Test runner — used to discover and execute tests in the tests/ directory
+pytest>=8.0.0
+
+# Code formatter — enforces PEP 8 style automatically
+black>=24.0.0
+
+# Linter — static analysis for bugs, style, and complexity
+ruff>=0.4.0
+
+# Type checker — validates type annotations across the codebase
+mypy>=1.10.0
