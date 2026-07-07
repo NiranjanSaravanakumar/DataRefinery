@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔧 BB DataRefinery
+# 🔧  DataRefinery
 
 **A production-style Python ETL pipeline that cleans, validates, transforms, and reports on messy operational order data.**
 
@@ -18,7 +18,7 @@
 
 ## 📸 Dashboard Preview
 
-![BB DataRefinery Dashboard](assets/datapipeline-dashboard.png)
+![DataRefinery Dashboard](assets/datapipeline-dashboard.png)
 
 The interactive browser dashboard lets you preview a full pipeline run, filter validation issues by severity, inspect transformed records, and download sample output files — all without leaving your browser.
 
@@ -48,7 +48,7 @@ The interactive browser dashboard lets you preview a full pipeline run, filter v
 
 ## 📖 Project Overview
 
-**BB DataRefinery** is a lightweight, zero-dependency Python ETL (Extract → Transform → Load) pipeline designed as a portfolio project demonstrating practical data engineering skills.
+**DataRefinery** is a lightweight, zero-dependency Python ETL (Extract → Transform → Load) pipeline designed as a portfolio project demonstrating practical data engineering skills.
 
 It ingests raw CSV order data, applies a comprehensive set of validation and transformation rules, and produces three structured output reports:
 
@@ -190,8 +190,8 @@ DataRefinery/
 ### Step 1 — Clone the repository
 
 ```bash
-git clone https://github.com/briannab1997/BB-DataPipeline.git
-cd BB-DataPipeline
+git clone https://github.com/NiranjanSaravanakumar/DataRefinery.git
+cd DataRefinery
 ```
 
 ### Step 2 — Create a virtual environment
@@ -260,7 +260,6 @@ open index.html
 xdg-open index.html
 ```
 
-Or visit the [live GitHub Pages demo](https://briannab1997.github.io/BB-DataPipeline/).
 
 ---
 
