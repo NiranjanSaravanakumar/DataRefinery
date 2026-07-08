@@ -2,8 +2,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from bb_datapipeline import run_pipeline
-from bb_datapipeline.pipeline import write_reports
+from datapipeline import run_pipeline
+from datapipeline.pipeline import write_reports
 
 
 DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "raw_orders.csv"

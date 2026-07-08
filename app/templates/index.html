@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}DataRefinery — Upload CSV{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-text">
+    <h1 class="hero-title">
+      Clean your data.<br>
+      <span class="gradient-text">Instantly.</span>
+    </h1>
+    <p class="hero-subtitle">
+      Upload any CSV file. DataRefinery validates, transforms, and enriches your records
+      in seconds — then gives you a downloadable cleaned file and a full quality report.
+    </p>
+  </div>
+
+  <!-- Feature pills -->
+  <div class="feature-pills">
+    <span class="pill">✓ Deduplication</span>
+    <span class="pill">✓ Missing Value Detection</span>
+    <span class="pill">✓ Format Standardisation</span>
+    <span class="pill">✓ Revenue Calculation</span>
+    <span class="pill">✓ Quality Scoring</span>
+  </div>
+</section>
+
+<!-- Upload Card -->
+<section class="upload-section">
+  <div class="upload-card" id="upload-card">
+
+    {% if error %}
+    <div class="alert alert-error" role="alert">
+      <span class="alert-icon">⚠️</span>
+      <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Drop zone -->
+    <div class="drop-zone" id="drop-zone" role="region" aria-label="File upload area">
+      <div class="drop-icon" id="drop-icon">📂</div>
+      <p class="drop-title" id="drop-title">Drag &amp; drop your CSV here</p>
+      <p class="drop-sub" id="drop-sub">or click to browse your files</p>
+      <p class="drop-hint">Accepts: <strong>.csv</strong> files up to 32 MB</p>
+      <input
+        type="file"
+        id="file-input"
+        name="file"
+        accept=".csv"
+        class="file-input-hidden"
+        aria-label="Choose CSV file"
+      >
+    </div>
+
+    <!-- File info panel (hidden until file selected) -->
+    <div class="file-info-panel" id="file-info-panel" hidden>
+      <div class="file-info-row">
+        <span class="file-icon">📄</span>
+        <div class="file-details">
+          <span class="file-name" id="file-name-display">—</span>
+          <span class="file-size" id="file-size-display">—</span>
+        </div>
+        <button class="btn-clear" id="btn-clear" aria-label="Remove file">✕</button>
+      </div>
+    </div>
+
+    <!-- Progress bar (hidden until upload starts) -->
+    <div class="progress-container" id="progress-container" hidden>
+      <div class="progress-label">
+        <span id="progress-status">Uploading…</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progress-bar-fill"></div>
+      </div>
+    </div>
+
+    <!-- Error message (shown on upload failure) -->
+    <div class="upload-error" id="upload-error" hidden role="alert">
+      <span class="alert-icon">⚠️</span>
+      <span id="upload-error-text"></span>
+    </div>
+
+    <!-- Action button -->
+    <button
+      class="btn-primary btn-full"
+      id="btn-clean"
+      disabled
+      aria-disabled="true"
+    >
+      <span class="btn-icon">⚡</span>
+      <span id="btn-clean-text">Upload &amp; Clean Data</span>
+    </button>
+
+    <p class="privacy-note">
+      🔒 Files are processed in an isolated session and auto-deleted after 2 hours.
+    </p>
+  </div>
+
+  <!-- How it works -->
+  <div class="how-it-works">
+    <h2 class="how-title">How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Upload</h3>
+          <p>Drop your CSV file. We validate the format before processing begins.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Clean</h3>
+          <p>9 validation rules run on every row. Bad data is flagged; good data is transformed.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Download</h3>
+          <p>Get your cleaned CSV, a detailed HTML report, or a ZIP bundle — all in one click.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}

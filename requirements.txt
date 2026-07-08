@@ -1,18 +1,25 @@
 # ==============================================================================
-# BB DataRefinery — Python Dependencies
+# DataRefinery — Python Dependencies
 # ==============================================================================
-# This project uses ONLY the Python standard library for its core ETL pipeline.
-# No third-party runtime packages are required.
-#
-# Standard library modules used internally:
-#   csv, json, dataclasses, datetime, decimal, pathlib, typing, argparse
-#
 # Python version requirement: >=3.11
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# Development & Testing Dependencies
+# Runtime Dependencies — Flask Web Application
 # Install with: pip install -r requirements.txt
+# ------------------------------------------------------------------------------
+
+# Web framework — powers the DataRefinery web interface
+flask>=3.0.0
+
+# Environment variable loader — reads .env into os.environ
+python-dotenv>=1.0.0
+
+# HTTP utilities — file validation, secure filenames (bundled with Flask)
+Werkzeug>=3.0.0
+
+# ------------------------------------------------------------------------------
+# Development & Testing Dependencies
 # ------------------------------------------------------------------------------
 
 # Test runner — used to discover and execute tests in the tests/ directory

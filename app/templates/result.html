@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% block title %}DataRefinery — Results{% endblock %}
+
+{% block content %}
+<section class="result-hero">
+  <div class="result-header">
+    <a href="/" class="back-link">← Process another file</a>
+    <h1 class="result-title">Pipeline <span class="gradient-text">Complete</span></h1>
+    <p class="result-meta">
+      File: <strong>{{ summary.filename }}</strong>
+      &nbsp;·&nbsp;
+      Processed: {{ summary.timestamp | replace('T', ' ') | replace('+00:00', ' UTC') | truncate(23, True, '') }}
+    </p>
+  </div>
+</section>
+
+<!-- Score + Top stats -->
+<section class="stats-section">
+  <!-- Score gauge -->
+  {% set score = summary.pipeline_score %}
+  {% if score >= 90 %}
+    {% set score_class = 'excellent' %}{% set score_label = 'Excellent' %}
+  {% elif score >= 70 %}
+    {% set score_class = 'good' %}{% set score_label = 'Good' %}
+  {% elif score >= 50 %}
+    {% set score_class = 'fair' %}{% set score_label = 'Fair' %}
+  {% else %}
+    {% set score_class = 'poor' %}{% set score_label = 'Poor' %}
+  {% endif %}
+  <div class="score-card score-status-{{ score_class }}">
+
+    <div class="score-ring-wrapper">
+      <svg class="score-ring" viewBox="0 0 120 120" aria-label="Pipeline score {{ score }} out of 100">
+        <circle class="ring-track" cx="60" cy="60" r="50"/>
+        <circle
+          class="ring-fill"
+          cx="60" cy="60" r="50"
+          stroke="var(--score-color)"
+          stroke-dasharray="{{ (score / 100 * 314.16) | round(2) }} 314.16"
+        />
+      </svg>
+      <div class="score-center">
+        <span class="score-num">{{ score }}</span>
+        <span class="score-denom">/100</span>
+      </div>
+    </div>
+    <p class="score-label">{{ score_label }}</p>
+    <p class="score-sub">Pipeline Quality Score</p>
+  </div>
+
+  <!-- Stats grid -->
+  <div class="stats-grid">
+    <div class="stat-card stat-blue">
+      <div class="stat-val">{{ summary.rows_before }}</div>
+      <div class="stat-label">Rows Input</div>
+    </div>
+    <div class="stat-card stat-green">
+      <div class="stat-val">{{ summary.rows_after }}</div>
+      <div class="stat-label">Rows Cleaned</div>
+    </div>
+    <div class="stat-card stat-red">
+      <div class="stat-val">{{ summary.rejected_records }}</div>
+      <div class="stat-label">Rows Rejected</div>
+    </div>
+    <div class="stat-card stat-yellow">
+      <div class="stat-val">{{ summary.total_issues }}</div>
+      <div class="stat-label">Issues Found</div>
+    </div>
+    <div class="stat-card stat-purple">
+      <div class="stat-val">{{ summary.duplicate_rows_removed }}</div>
+      <div class="stat-label">Duplicates</div>
+    </div>
+    <div class="stat-card stat-cyan">
+      <div class="stat-val">${{ summary.total_revenue }}</div>
+      <div class="stat-label">Total Revenue</div>
+    </div>
+  </div>
+</section>
+
+<!-- Download buttons -->
+<section class="downloads-section">
+  <h2 class="section-title">Download Your Results</h2>
+  <div class="download-cards">
+
+    <div class="dl-card">
+      <div class="dl-icon">📊</div>
+      <div class="dl-body">
+        <h3>Cleaned CSV</h3>
+        <p>{{ summary.rows_after }} clean records with standardised fields and computed metrics.</p>
+      </div>
+      <a href="/download/cleaned/{{ session_id }}" class="btn-download btn-csv">
+        Download CSV
+      </a>
+    </div>
+
+    <div class="dl-card">
+      <div class="dl-icon">📋</div>
+      <div class="dl-body">
+        <h3>HTML Report</h3>
+        <p>Full pipeline report with issue log, revenue breakdown, and quality score.</p>
+      </div>
+      <a href="/download/report/{{ session_id }}" class="btn-download btn-report">
+        Download Report
+      </a>
+    </div>
+
+    <div class="dl-card dl-card-featured">
+      <div class="dl-icon">📦</div>
+      <div class="dl-body">
+        <h3>Complete Bundle</h3>
+        <p>ZIP file containing the cleaned CSV, HTML report, and issues log.</p>
+      </div>
+      <a href="/download/zip/{{ session_id }}" class="btn-download btn-zip">
+        Download ZIP
+      </a>
+    </div>
+
+  </div>
+</section>
+
+<!-- Before / After comparison -->
+<section class="detail-section">
+  <div class="detail-grid">
+
+    <!-- Column changes -->
+    <div class="detail-card">
+      <h2 class="detail-title">Column Changes</h2>
+      <div class="col-comparison">
+        <div class="col-group">
+          <p class="col-group-label">Input ({{ summary.cols_before }} cols)</p>
+          <div class="col-tags">
+            {% for col in summary.columns_before %}
+              <span class="col-tag col-tag-before">{{ col }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="col-arrow">→</div>
+        <div class="col-group">
+          <p class="col-group-label">Output ({{ summary.cols_after }} cols)</p>
+          <div class="col-tags">
+            {% for col in summary.columns_after %}
+              {% if col not in summary.columns_before %}
+                <span class="col-tag col-tag-new">{{ col }} ✦</span>
+              {% else %}
+                <span class="col-tag col-tag-after">{{ col }}</span>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Severity breakdown -->
+    <div class="detail-card">
+      <h2 class="detail-title">Issue Severity</h2>
+      <div class="severity-bars">
+        <div class="severity-row">
+          <span class="severity-label sev-high">HIGH</span>
+          <div class="sev-bar-track">
+            {% set high_pct = ((summary.high_severity_issues / summary.total_issues * 100) | round | int) if summary.total_issues > 0 else 0 %}
+            <div class="sev-bar-fill sev-fill-high" style="width: {{ high_pct }}%;"></div>
+          </div>
+          <span class="sev-count">{{ summary.high_severity_issues }}</span>
+        </div>
+        <div class="severity-row">
+          <span class="severity-label sev-med">MED</span>
+          <div class="sev-bar-track">
+            {% set med_pct = ((summary.medium_severity_issues / summary.total_issues * 100) | round | int) if summary.total_issues > 0 else 0 %}
+            <div class="sev-bar-fill sev-fill-med" style="width: {{ med_pct }}%;"></div>
+          </div>
+          <span class="sev-count">{{ summary.medium_severity_issues }}</span>
+        </div>
+      </div>
+      <div class="top-fields">
+        <p class="top-fields-label">Top issue fields:</p>
+        {% for field, count in summary.top_issue_fields.items() %}
+          <span class="field-tag">{{ field }} <strong>×{{ count }}</strong></span>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Revenue breakdown -->
+{% if summary.revenue_by_region %}
+<section class="detail-section">
+  <div class="detail-grid">
+    <div class="detail-card">
+      <h2 class="detail-title">Revenue by Region</h2>
+      <table class="data-table">
+        <thead>
+          <tr><th>Region</th><th>Revenue</th></tr>
+        </thead>
+        <tbody>
+          {% for region, rev in summary.revenue_by_region.items() %}
+          <tr>
+            <td>{{ region }}</td>
+            <td class="mono">${{ rev }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="detail-card">
+      <h2 class="detail-title">Orders by Status</h2>
+      <table class="data-table">
+        <thead>
+          <tr><th>Status</th><th>Count</th></tr>
+        </thead>
+        <tbody>
+          {% for status, count in summary.status_counts.items() %}
+          <tr>
+            <td><span class="status-badge status-{{ status | lower }}">{{ status }}</span></td>
+            <td class="mono">{{ count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- Issues log -->
+{% if summary.issues_by_field %}
+<section class="detail-section">
+  <div class="detail-card full-width">
+    <h2 class="detail-title">Validation Issues Log</h2>
+    <div class="table-scroll">
+      <table class="data-table issues-table">
+        <thead>
+          <tr>
+            <th>Row</th>
+            <th>Order ID</th>
+            <th>Field</th>
+            <th>Severity</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for field, issues in summary.issues_by_field.items() %}
+            {% for issue in issues %}
+            <tr>
+              <td class="mono">{{ issue.row_number }}</td>
+              <td class="mono">{{ issue.order_id }}</td>
+              <td><code>{{ field }}</code></td>
+              <td>
+                {% if issue.severity == 'high' %}
+                  <span class="badge badge-high">HIGH</span>
+                {% else %}
+                  <span class="badge badge-med">MED</span>
+                {% endif %}
+              </td>
+              <td>{{ issue.message }}</td>
+            </tr>
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% else %}
+<section class="detail-section">
+  <div class="detail-card full-width success-card">
+    <div class="success-icon">🎉</div>
+    <h2>Perfect Data!</h2>
+    <p>No validation issues were found in your dataset.</p>
+  </div>
+</section>
+{% endif %}
+
+{% endblock %}

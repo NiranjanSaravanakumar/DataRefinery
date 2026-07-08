@@ -1,16 +1,16 @@
 <div align="center">
 
-# 🔧  DataRefinery
+# ⚗️ DataRefinery
 
-**A production-style Python ETL pipeline that cleans, validates, transforms, and reports on messy operational order data.**
+**A production-style Python ETL pipeline with a Flask web interface — upload a messy CSV, get back a cleaned file and a full quality report.**
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.0%2B-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen)](#running-tests)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-blue)](https://briannab1997.github.io/BB-DataPipeline/)
 
-[**Live Demo**](https://briannab1997.github.io/BB-DataPipeline/) · [**Report a Bug**](https://github.com/briannab1997/BB-DataPipeline/issues) · [**Request a Feature**](https://github.com/briannab1997/BB-DataPipeline/issues)
+[**Report a Bug**](https://github.com/NiranjanSaravanakumar/DataRefinery/issues) · [**Request a Feature**](https://github.com/NiranjanSaravanakumar/DataRefinery/issues)
 
 </div>
 
@@ -19,8 +19,6 @@
 ## 📸 Dashboard Preview
 
 ![DataRefinery Dashboard](assets/datapipeline-dashboard.png)
-
-The interactive browser dashboard lets you preview a full pipeline run, filter validation issues by severity, inspect transformed records, and download sample output files — all without leaving your browser.
 
 ---
 
@@ -32,92 +30,79 @@ The interactive browser dashboard lets you preview a full pipeline run, filter v
 - [Folder Structure](#-folder-structure)
 - [Technologies Used](#-technologies-used)
 - [Installation](#-installation)
-- [How to Run the Project](#-how-to-run-the-project)
+- [How to Run](#-how-to-run)
 - [Running Tests](#-running-tests)
-- [Pipeline Output Files](#-pipeline-output-files)
+- [API Routes](#-api-routes)
 - [Pipeline Validation Rules](#-pipeline-validation-rules)
+- [Pipeline Output Files](#-pipeline-output-files)
 - [Data Transformations](#-data-transformations)
 - [Pipeline Score](#-pipeline-score)
-- [Example Output](#-example-output)
 - [Future Improvements](#-future-improvements)
-- [Contributing](#-contributing)
-- [License](#-license)
-- [Author](#-author)
 
 ---
 
 ## 📖 Project Overview
 
-**DataRefinery** is a lightweight, zero-dependency Python ETL (Extract → Transform → Load) pipeline designed as a portfolio project demonstrating practical data engineering skills.
+**DataRefinery** is a full-stack Python ETL application consisting of two layers:
 
-It ingests raw CSV order data, applies a comprehensive set of validation and transformation rules, and produces three structured output reports:
+1. **Core ETL pipeline** (`datapipeline/`) — a pure-Python package that reads raw CSV order data, applies 9 validation rules, transforms accepted rows, and writes three structured output files. Zero external runtime dependencies.
+
+2. **Flask web interface** (`app/`) — a browser-based frontend that lets users upload a CSV file, runs the ETL pipeline on the server, and presents an interactive results dashboard with download options.
 
 | Output File | Description |
 |---|---|
-| `clean_orders.csv` | Validated, standardized, enriched order records |
+| `clean_orders.csv` | Validated, standardised, enriched order records |
 | `pipeline_issues.csv` | Row-level log of every validation failure found |
 | `pipeline_summary.json` | Aggregate metrics: revenue, scores, status counts |
 
 **Why this project?**
-Most portfolio projects only show *displaying* data. This project demonstrates the harder, more valuable skill: *cleaning and validating* data before it reaches any dashboard, report, or downstream system — which is what real data, analytics, cloud, and operations teams actually spend their time doing.
+Most portfolio projects only show *displaying* data. This project demonstrates the harder, more valuable skill: *cleaning and validating* data before it reaches any dashboard or downstream system — which is what real data engineering teams actually spend their time doing.
 
 ---
 
 ## ✨ Features
 
-- **Validation Engine** — Checks required fields, date formats, numeric ranges, duplicate IDs, status values, and region names
-- **Data Standardization** — Normalises region aliases (`NE` → `Northeast`, `se` → `Southeast`), status casings, customer IDs, and category titles
-- **Revenue Calculation** — Computes `revenue = quantity × unit_price` for every clean record
+- **Validation Engine** — 9 rules: required fields, date formats, numeric ranges, duplicate IDs, status and region standardisation
+- **Data Standardisation** — Normalises region aliases (`NE` → `Northeast`), status casings, customer IDs, and category titles
+- **Revenue Calculation** — Computes `revenue = quantity × unit_price` using `decimal.Decimal` (no float errors)
 - **Fulfillment Timing** — Calculates `fulfillment_days` from order date to ship date
-- **Priority Lane Flag** — Marks orders with revenue ≥ $500 or status of "Processing" as `priority_lane: Yes`
-- **Severity-based Filtering** — Rows with any `high`-severity issue are rejected; rows with only `medium` issues are kept and flagged
-- **Pipeline Score** — Calculates a 0–100 quality score based on issue count and severity
-- **Structured Reports** — Exports three output files per run (CSV + JSON)
-- **Interactive Browser Demo** — A standalone `index.html` dashboard for visual exploration
-- **Unit Tests** — Three focused tests covering summary metrics, data standardization, and file output
+- **Priority Lane Flag** — Marks high-value or time-sensitive orders as `priority_lane: Yes`
+- **Severity-based Filtering** — `high`-severity rows are rejected; `medium`-severity rows are kept and flagged
+- **Pipeline Score** — A 0–100 quality score based on issue count and severity
+- **Flask Web App** — Drag-and-drop CSV upload, progress bar, results dashboard, and download buttons
+- **Session Isolation** — Each upload gets its own UUID-keyed directory; sessions auto-expire after 2 hours
+- **Unit + Integration Tests** — Pipeline tests and full Flask route tests via `pytest`
 
 ---
 
 ## 🏗 Architecture Overview
 
 ```
-                ┌─────────────────────┐
-                │   raw_orders.csv    │  ← Input (raw, messy data)
-                └────────┬────────────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │   _read_csv()        │  EXTRACT — reads CSV rows into dicts
-              └──────────┬───────────┘
-                         │
-                         ▼
-              ┌──────────────────────────────────────────┐
-              │   run_pipeline()  — per-row processing   │
-              │                                          │
-              │   1. Required-field validation           │
-              │   2. Duplicate order ID detection        │
-              │   3. Date format & logic validation      │
-              │   4. Numeric range validation            │
-              │   5. Status & region standardization     │
-              │   6. Row acceptance / rejection          │
-              └──────────┬───────────────────────────────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │  _transform_row()   │  TRANSFORM — enrich accepted rows
-              └──────────┬───────────┘
-                         │
-                         ▼
-              ┌──────────────────────────────────────────┐
-              │          write_reports()                 │  LOAD — write outputs
-              │                                          │
-              │  clean_orders.csv                        │
-              │  pipeline_issues.csv                     │
-              │  pipeline_summary.json                   │
-              └──────────────────────────────────────────┘
-```
+Browser
+  │
+  │  POST /upload (multipart CSV)
+  ▼
+Flask (app/)
+  ├── routes/main.py       GET /                → Upload page
+  ├── routes/api.py        POST /upload         → Validate & save file
+  │                        POST /clean          → Run ETL pipeline
+  │                        GET  /result/<id>    → Results page
+  │                        GET  /download/…     → CSV / HTML / ZIP downloads
+  │
+  ├── services/
+  │   ├── cleaner.py       Wraps datapipeline, builds web_summary dict
+  │   └── report.py        Generates standalone HTML report
+  │
+  └── utils/
+      └── file_helpers.py  CSV validation, session dir management, cleanup
 
-The pipeline follows a classical **ETL pattern** implemented as pure functions — no classes, no global state, no external dependencies. Each stage is testable in isolation.
+Core ETL (datapipeline/)
+  └── pipeline.py
+        _read_csv()         EXTRACT  — CSV rows → list[dict]
+        run_pipeline()      VALIDATE — 9 rules, per-row
+        _transform_row()    TRANSFORM — enrich accepted rows
+        write_reports()     LOAD     — 3 output files
+```
 
 ---
 
@@ -126,34 +111,53 @@ The pipeline follows a classical **ETL pattern** implemented as pure functions �
 ```text
 DataRefinery/
 │
-├── bb_datapipeline/              # Core Python package (the ETL engine)
-│   ├── __init__.py               # Public API: exports run_pipeline, PipelineResult
-│   ├── __main__.py               # CLI entry point (python -m bb_datapipeline)
+├── app/                          # Flask web application
+│   ├── __init__.py               # App factory (create_app)
+│   ├── config.py                 # Dev / Testing / Production config classes
+│   ├── routes/
+│   │   ├── main.py               # GET / (upload page)
+│   │   └── api.py                # POST /upload, /clean, GET /result, /download
+│   ├── services/
+│   │   ├── cleaner.py            # ETL orchestration + web summary builder
+│   │   └── report.py             # Standalone HTML report generator
+│   ├── utils/
+│   │   └── file_helpers.py       # CSV validation, session dirs, cleanup
+│   ├── templates/
+│   │   ├── base.html             # Shared layout (nav, footer, Google Fonts)
+│   │   ├── index.html            # Upload form page
+│   │   └── result.html           # Results dashboard page
+│   └── static/
+│       ├── css/style.css         # All application styles
+│       └── js/upload.js          # Drag-and-drop upload flow + XHR
+│
+├── datapipeline/                 # Core ETL package (no Flask dependency)
+│   ├── __init__.py               # Public API: run_pipeline, PipelineResult
+│   ├── __main__.py               # CLI entry point (python -m datapipeline)
 │   └── pipeline.py               # All ETL logic: validate, transform, report
 │
 ├── data/
-│   └── raw_orders.csv            # Sample input data (14 rows, intentional errors)
+│   └── raw_orders.csv            # Sample input (14 rows, intentional errors)
 │
-├── reports/                      # Generated output files (git-ignored)
-│   ├── clean_orders.csv          # 8 accepted, enriched records
-│   ├── pipeline_issues.csv       # All validation failures with row references
-│   └── pipeline_summary.json    # Aggregate summary with revenue & score
+├── reports/                      # Generated outputs (git-ignored)
+│   ├── clean_orders.csv
+│   ├── pipeline_issues.csv
+│   └── pipeline_summary.json
 │
 ├── tests/
-│   └── test_pipeline.py          # Unit tests (pytest or unittest)
+│   ├── test_pipeline.py          # Unit tests for the ETL pipeline
+│   └── test_routes.py            # Integration tests for Flask routes
+│
+├── docs/
+│   ├── architecture.md           # Technical architecture deep-dive
+│   └── workflow.md               # Step-by-step data flow explanation
 │
 ├── assets/
-│   └── datapipeline-dashboard.png # Dashboard screenshot for README
+│   └── datapipeline-dashboard.png  # README screenshot
 │
-├── index.html                    # Standalone browser dashboard (no server needed)
-├── requirements.txt              # Dev dependencies (pytest, black, ruff, mypy)
-├── pyproject.toml                # Project metadata + pytest configuration
-├── .gitignore                    # Standard Python gitignore
-├── .env.example                  # Environment variable template (if applicable)
-├── CHANGELOG.md                  # Version history
-├── CONTRIBUTING.md               # Contribution guidelines
-├── LICENSE                       # MIT License
-└── README.md                     # This file
+├── run.py                        # Flask dev server entry point
+├── requirements.txt              # All Python dependencies
+├── .env.example                  # Environment variable template
+└── .gitignore                    # Standard Python + Flask gitignore
 ```
 
 ---
@@ -163,20 +167,21 @@ DataRefinery/
 | Technology | Version | Purpose |
 |---|---|---|
 | **Python** | 3.11+ | Core language |
-| `csv` (stdlib) | — | Reading/writing CSV files |
-| `json` (stdlib) | — | Writing the summary report |
-| `dataclasses` (stdlib) | — | Immutable `PipelineIssue` and `PipelineResult` data containers |
-| `decimal` (stdlib) | — | Exact decimal arithmetic for financial values (avoids float rounding) |
-| `datetime` (stdlib) | — | Date parsing and fulfillment day calculation |
+| **Flask** | 3.0+ | Web framework |
+| **Werkzeug** | 3.0+ | File handling utilities |
+| **python-dotenv** | 1.0+ | `.env` file loader |
+| `csv` (stdlib) | — | CSV reading and writing |
+| `json` (stdlib) | — | Summary report serialisation |
+| `dataclasses` (stdlib) | — | Immutable pipeline data containers |
+| `decimal` (stdlib) | — | Exact arithmetic for financial values |
+| `datetime` (stdlib) | — | Date parsing and validation |
 | `pathlib` (stdlib) | — | Cross-platform file path handling |
-| `argparse` (stdlib) | — | CLI argument parsing |
-| **HTML / CSS / JS** | — | Interactive browser dashboard (`index.html`) |
-| **pytest** | 8.0+ | Test runner (dev dependency) |
-| **black** | 24.0+ | Code formatter (dev dependency) |
-| **ruff** | 0.4+ | Linter (dev dependency) |
-| **mypy** | 1.10+ | Static type checker (dev dependency) |
-
-> **No third-party runtime dependencies.** The pipeline runs on any Python 3.11+ installation with no `pip install` needed.
+| `uuid` (stdlib) | — | Session isolation |
+| **HTML / CSS / JS** | — | Frontend (vanilla, no frameworks) |
+| **pytest** | 8.0+ | Test runner |
+| **black** | 24.0+ | Code formatter |
+| **ruff** | 0.4+ | Linter |
+| **mypy** | 1.10+ | Static type checker |
 
 ---
 
@@ -208,36 +213,68 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### Step 3 — Install development dependencies
+### Step 3 — Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-> **Note:** The pipeline itself has zero external dependencies. `requirements.txt` only installs developer tools (pytest, black, ruff, mypy).
-
----
-
-## ▶️ How to Run the Project
-
-### Option A — Run the ETL pipeline (CLI)
+### Step 4 — Configure environment (optional)
 
 ```bash
 # Windows
-python -m bb_datapipeline --input data/raw_orders.csv --out reports
+copy .env.example .env
 
 # macOS / Linux
-python3 -m bb_datapipeline --input data/raw_orders.csv --out reports
+cp .env.example .env
 ```
 
-**CLI Arguments:**
+Edit `.env` to set your `FLASK_SECRET_KEY` and any other overrides. All values have sensible defaults so this step is optional for local development.
+
+---
+
+## ▶️ How to Run
+
+### Option A — Flask web server (recommended)
+
+```bash
+python run.py
+```
+
+Then open **http://127.0.0.1:5000/** in your browser.
+
+**What you can do:**
+1. **Upload** a CSV file via drag-and-drop or the file picker
+2. **Clean** — click "Upload & Clean Data" to run the ETL pipeline
+3. **Review** — the results dashboard shows before/after stats, issue severity, revenue breakdown, and quality score
+4. **Download** — get the cleaned CSV, a standalone HTML report, or a ZIP bundle containing both
+
+**Environment variables (all optional):**
+
+| Variable | Default | Description |
+|---|---|---|
+| `FLASK_HOST` | `127.0.0.1` | Server host |
+| `FLASK_PORT` | `5000` | Server port |
+| `FLASK_DEBUG` | `true` | Enable debug mode |
+| `FLASK_ENV` | `development` | Environment (`development` / `production` / `testing`) |
+| `FLASK_SECRET_KEY` | *(random)* | Secret key for session signing |
+| `MAX_UPLOAD_MB` | `32` | Maximum upload file size in MB |
+| `SESSION_MAX_AGE_HOURS` | `2` | Hours before uploaded sessions are auto-deleted |
+
+### Option B — CLI pipeline (no web server)
+
+```bash
+python -m datapipeline --input data/raw_orders.csv --out reports
+```
+
+**Arguments:**
 
 | Argument | Default | Description |
 |---|---|---|
 | `--input` | `data/raw_orders.csv` | Path to the raw CSV input file |
-| `--out` | `reports` | Directory where output reports will be written |
+| `--out` | `reports` | Directory where output files will be written |
 
-**Expected terminal output:**
+**Expected output:**
 ```
 Processed 14 rows.
 Clean records: 8
@@ -245,103 +282,43 @@ Issues found: 18
 Pipeline score: 46/100
 ```
 
-### Option B — Open the browser dashboard
-
-Open `index.html` directly in any modern browser — no server or installation required.
-
-```bash
-# Windows
-start index.html
-
-# macOS
-open index.html
-
-# Linux
-xdg-open index.html
-```
-
-
 ---
 
 ## 🧪 Running Tests
 
-The project includes unit tests covering summary correctness, data standardization, and file output.
+The project includes unit tests for the ETL pipeline and integration tests for all Flask routes.
 
-**Run with pytest (recommended):**
 ```bash
 pytest
 ```
 
-**Run with the standard library test runner:**
-```bash
-# Windows
-python -m unittest discover -s tests
-
-# macOS / Linux
-python3 -m unittest discover -s tests
-```
-
 **Expected result:**
 ```
-...
+tests/test_pipeline.py ...     [ 3 tests ]
+tests/test_routes.py .......   [13 tests]
 ----------------------------------------------------------------------
-Ran 3 tests in 0.012s
+All tests passed.
+```
 
-OK
+To run with verbose output:
+```bash
+pytest -v
 ```
 
 ---
 
-## 📤 Pipeline Output Files
+## 🌐 API Routes
 
-After running the pipeline, three files are written to the `reports/` directory:
-
-### `clean_orders.csv`
-Accepted records with added computed fields:
-
-| Column | Description |
-|---|---|
-| `order_id` | Original order identifier |
-| `customer_id` | Uppercased customer identifier |
-| `order_date` | ISO 8601 date string |
-| `ship_date` | ISO 8601 date string |
-| `fulfillment_days` | Days between order and ship date |
-| `region` | Standardized region name |
-| `category` | Title-cased category |
-| `quantity` | Integer quantity |
-| `unit_price` | Price formatted to 2 decimal places |
-| `revenue` | `quantity × unit_price` |
-| `status` | Standardized status label |
-| `priority_lane` | `Yes` if revenue ≥ $500 or status is Processing |
-
-### `pipeline_issues.csv`
-Row-level validation log:
-
-| Column | Description |
-|---|---|
-| `row_number` | CSV row number (1-indexed, header = row 1) |
-| `order_id` | Affected order ID (or UNKNOWN if missing) |
-| `field` | Field that caused the issue |
-| `severity` | `high` (row rejected) or `medium` (row kept) |
-| `message` | Human-readable description of the problem |
-
-### `pipeline_summary.json`
-Aggregate run metrics:
-
-```json
-{
-  "rows_processed": 14,
-  "clean_records": 8,
-  "rejected_records": 6,
-  "issues_found": 18,
-  "high_severity_issues": 13,
-  "pipeline_score": 46,
-  "total_revenue": "6002.50",
-  "revenue_by_region": { ... },
-  "status_counts": { ... },
-  "top_issue_fields": { ... }
-}
-```
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/` | Upload page |
+| `GET` | `/health` | Health check — returns JSON `{ status: "ok", version, timestamp }` |
+| `POST` | `/upload` | Accept a CSV file; returns `{ session_id, filename, size_bytes }` |
+| `POST` | `/clean` | Run ETL on a session file; returns `{ redirect: "/result/<id>" }` |
+| `GET` | `/result/<session_id>` | Results dashboard page |
+| `GET` | `/download/cleaned/<session_id>` | Download cleaned CSV |
+| `GET` | `/download/report/<session_id>` | Download standalone HTML report |
+| `GET` | `/download/zip/<session_id>` | Download ZIP (cleaned CSV + HTML report + JSON summary) |
 
 ---
 
@@ -359,7 +336,58 @@ Aggregate run metrics:
 | Invalid status | `high` | `status` is not one of the 5 accepted values |
 | Unrecognised region | `medium` | `region` cannot be mapped to a standard name |
 
-> Rows with **any** `high`-severity issue are excluded from `clean_orders.csv`. Rows with only `medium`-severity issues are included.
+> Rows with **any** `high`-severity issue are excluded from `clean_orders.csv`. Rows with only `medium` issues are included but flagged.
+
+---
+
+## 📤 Pipeline Output Files
+
+### `clean_orders.csv`
+Accepted records with computed fields added:
+
+| Column | Description |
+|---|---|
+| `order_id` | Original order identifier |
+| `customer_id` | Uppercased customer identifier |
+| `order_date` | ISO 8601 date string |
+| `ship_date` | ISO 8601 date string |
+| `fulfillment_days` | Days between order and ship date |
+| `region` | Standardised region name |
+| `category` | Title-cased category |
+| `quantity` | Integer quantity |
+| `unit_price` | Price formatted to 2 decimal places |
+| `revenue` | `quantity × unit_price` |
+| `status` | Standardised status label |
+| `priority_lane` | `Yes` if revenue ≥ $500 or status is Processing |
+
+### `pipeline_issues.csv`
+Row-level validation log:
+
+| Column | Description |
+|---|---|
+| `row_number` | CSV row number (header = row 1) |
+| `order_id` | Affected order ID (or `UNKNOWN` if missing) |
+| `field` | Column that caused the issue |
+| `severity` | `high` or `medium` |
+| `message` | Human-readable description |
+
+### `pipeline_summary.json`
+Aggregate run metrics:
+
+```json
+{
+  "rows_processed": 14,
+  "clean_records": 8,
+  "rejected_records": 6,
+  "issues_found": 18,
+  "high_severity_issues": 13,
+  "pipeline_score": 46,
+  "total_revenue": "6002.50",
+  "revenue_by_region": { "Midwest": "...", "Northeast": "...", ... },
+  "status_counts": { "Delivered": 4, "Shipped": 2, ... },
+  "top_issue_fields": { "order_date": 3, ... }
+}
+```
 
 ---
 
@@ -367,14 +395,14 @@ Aggregate run metrics:
 
 | Field | Transformation Applied |
 |---|---|
-| `customer_id` | Converted to uppercase (e.g., `c-224` → `C-224`) |
-| `region` | Alias-mapped (e.g., `NE`, `north east` → `Northeast`) |
-| `status` | Normalised to title case (e.g., `shipped` → `Shipped`) |
-| `category` | Title-cased (e.g., `cloud services` → `Cloud Services`) |
+| `customer_id` | Converted to uppercase (`c-224` → `C-224`) |
+| `region` | Alias-mapped (`NE`, `north east` → `Northeast`) |
+| `status` | Normalised to title case (`shipped` → `Shipped`) |
+| `category` | Title-cased (`cloud services` → `Cloud Services`) |
 | `unit_price` | Currency symbol stripped, formatted to 2 d.p. |
 | `revenue` | Computed as `quantity × unit_price` |
 | `fulfillment_days` | Computed as `ship_date − order_date` in calendar days |
-| `priority_lane` | Set to `Yes` if revenue ≥ 500 or status is Processing |
+| `priority_lane` | `Yes` if revenue ≥ 500 or status is Processing |
 
 ---
 
@@ -403,39 +431,9 @@ The sample dataset intentionally scores **46/100** to demonstrate the pipeline's
 - [ ] Add a configurable rules file (JSON/YAML) so validation rules can be changed without editing source code
 - [ ] Extend region aliases to support all US regions and international markets
 - [ ] Add a `--verbose` CLI flag for detailed per-row output
-- [ ] Introduce a `--dry-run` flag to validate without writing output files
 - [ ] Add GitHub Actions CI workflow to run tests automatically on every push
-- [ ] Package and publish to PyPI for easy installation
-- [ ] Add Dockerfile for containerised execution
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature-name`
-3. Make your changes and add tests
-4. Run the test suite: `pytest`
-5. Commit: `git commit -m "feat: add your feature"`
-6. Push: `git push origin feature/your-feature-name`
-7. Open a Pull Request
-
----
-
-## 📜 License
-
-Distributed under the **MIT License**. See [LICENSE](LICENSE) for full details.
-
----
-
-## 👤 Author
-
-**Brianna B.**
-
-- GitHub: [@briannab1997](https://github.com/briannab1997)
-- Live Demo: [briannab1997.github.io/BB-DataPipeline](https://briannab1997.github.io/BB-DataPipeline/)
+- [ ] Add Dockerfile for containerised deployment
+- [ ] Package `datapipeline` and publish to PyPI
 
 ---
 

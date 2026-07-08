@@ -1,6 +1,6 @@
 # Workflow Guide
 
-This document explains how data flows through **BB DataRefinery** step by step.
+This document explains how data flows through **DataRefinery** step by step.
 
 ---
 

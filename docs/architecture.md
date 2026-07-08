@@ -1,12 +1,12 @@
 # Architecture
 
-This document describes the technical architecture of **BB DataRefinery**.
+This document describes the technical architecture of **DataRefinery**.
 
 ---
 
 ## Overview
 
-BB DataRefinery is a **single-package Python ETL application** following a classical Extract → Validate → Transform → Load (ETL) pattern. It is implemented entirely using the Python standard library and requires no external runtime dependencies.
+DataRefinery is a **Python ETL application** following a classical Extract → Validate → Transform → Load (ETL) pattern. The core pipeline logic is implemented entirely using the Python standard library and requires no external runtime dependencies. A Flask web interface wraps the core pipeline for browser-based use.
 
 ```
 bb_datapipeline/

@@ -1,4 +1,4 @@
-"""Data pipeline utilities for the BB Data Pipeline project."""
+"""Data pipeline utilities for the DataRefinery project."""
 
 from .pipeline import PipelineResult, run_pipeline
 
