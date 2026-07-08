@@ -5,13 +5,21 @@
 
 /* ── CSS Custom Properties ──────────────────────────────── */
 :root {
-  /* Palette */
+  /* Palette — dark (default) */
   --bg-base:       #080b14;
   --bg-surface:    #0f172a;
   --bg-card:       #111827;
   --bg-card-hover: #1a2540;
   --border:        rgba(99, 102, 241, 0.15);
   --border-hover:  rgba(139, 92, 246, 0.4);
+
+  /* Composite surfaces */
+  --panel-bg:          rgba(17, 24, 39, 0.7);
+  --navbar-bg:         rgba(8, 11, 20, 0.85);
+  --track-bg:          rgba(255, 255, 255, 0.08);
+  --table-divider:     rgba(255, 255, 255, 0.04);
+  --ring-track-stroke: rgba(255, 255, 255, 0.06);
+  --step-bg:           rgba(17, 24, 39, 0.6);
 
   /* Accent */
   --purple:  #8b5cf6;
@@ -40,6 +48,34 @@
   /* Transitions */
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
   --dur:  200ms;
+}
+
+/* ── Light Theme Overrides ──────────────────────────────── */
+[data-theme="light"] {
+  --bg-base:       #f8fafc;
+  --bg-surface:    #ffffff;
+  --bg-card:       #f1f5f9;
+  --bg-card-hover: #e2e8f0;
+  --border:        rgba(99, 102, 241, 0.2);
+  --border-hover:  rgba(139, 92, 246, 0.5);
+
+  --panel-bg:          rgba(255, 255, 255, 0.85);
+  --navbar-bg:         rgba(248, 250, 252, 0.9);
+  --track-bg:          rgba(0, 0, 0, 0.08);
+  --table-divider:     rgba(0, 0, 0, 0.05);
+  --ring-track-stroke: rgba(0, 0, 0, 0.08);
+  --step-bg:           rgba(241, 245, 249, 0.8);
+
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
+}
+
+[data-theme="light"] .bg-glow { opacity: 0.12; }
+[data-theme="light"] .bg-grid {
+  background-image:
+    linear-gradient(rgba(99,102,241,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,102,241,0.05) 1px, transparent 1px);
 }
 
 /* ── Reset & Base ────────────────────────────────────────── */
@@ -102,7 +138,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(8, 11, 20, 0.85);
+  background: var(--navbar-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
@@ -140,7 +176,7 @@ body {
   margin-left: 0.25rem;
   -webkit-text-fill-color: var(--text-muted);
 }
-.nav-links { display: flex; gap: 0.25rem; }
+.nav-links { display: flex; align-items: center; gap: 0.25rem; }
 .nav-link {
   text-decoration: none;
   color: var(--text-secondary);
@@ -154,6 +190,33 @@ body {
   color: var(--text-primary);
   background: rgba(139,92,246,0.12);
 }
+
+/* Theme toggle */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 999px;
+  cursor: pointer;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  transition: background var(--dur), border-color var(--dur), transform var(--dur);
+  margin-left: 0.25rem;
+}
+.theme-toggle:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: var(--purple);
+  transform: scale(1.06);
+}
+.theme-icon { line-height: 1; user-select: none; }
+/* Which icon shows depends on the active theme */
+.theme-icon-dark  { display: inline; }
+.theme-icon-light { display: none; }
+[data-theme="light"] .theme-icon-dark  { display: none; }
+[data-theme="light"] .theme-icon-light { display: inline; }
 
 /* ── Main Content Area ───────────────────────────────────── */
 .main-content {
@@ -238,7 +301,7 @@ body {
 }
 
 .upload-card {
-  background: rgba(17, 24, 39, 0.7);
+  background: var(--panel-bg);
   backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
@@ -343,7 +406,7 @@ body {
 }
 .progress-bar-track {
   height: 6px;
-  background: rgba(255,255,255,0.08);
+  background: var(--track-bg);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -468,7 +531,7 @@ body {
   gap: 1rem;
   align-items: flex-start;
   padding: 1.1rem 1.25rem;
-  background: rgba(17,24,39,0.6);
+  background: var(--step-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   transition: border-color var(--dur), transform var(--dur);
@@ -562,7 +625,7 @@ body {
 .score-card {
   text-align: center;
   padding: 1.5rem;
-  background: rgba(17,24,39,0.7);
+  background: var(--panel-bg);
   backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
@@ -581,7 +644,7 @@ body {
 }
 .ring-track {
   fill: none;
-  stroke: rgba(255,255,255,0.06);
+  stroke: var(--ring-track-stroke);
   stroke-width: 10;
 }
 .ring-fill {
@@ -653,7 +716,7 @@ body {
   gap: 1rem;
 }
 .dl-card {
-  background: rgba(17,24,39,0.7);
+  background: var(--panel-bg);
   backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
@@ -698,7 +761,7 @@ body {
   gap: 1.25rem;
 }
 .detail-card {
-  background: rgba(17,24,39,0.7);
+  background: var(--panel-bg);
   backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
@@ -760,7 +823,7 @@ body {
 .sev-bar-track {
   flex: 1;
   height: 8px;
-  background: rgba(255,255,255,0.06);
+  background: var(--track-bg);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -804,7 +867,7 @@ body {
 }
 .data-table td {
   padding: 0.55rem 0.85rem;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid var(--table-divider);
   color: var(--text-secondary);
 }
 .data-table tr:last-child td { border-bottom: none; }

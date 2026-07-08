@@ -16,10 +16,6 @@
   // ── DOM references ────────────────────────────────────────
   const dropZone       = document.getElementById("drop-zone");
   const fileInput      = document.getElementById("file-input");
-  const fileInfoPanel  = document.getElementById("file-info-panel");
-  const fileNameDisplay = document.getElementById("file-name-display");
-  const fileSizeDisplay = document.getElementById("file-size-display");
-  const btnClear       = document.getElementById("btn-clear");
   const progressCont   = document.getElementById("progress-container");
   const progressBar    = document.getElementById("progress-bar-fill");
   const progressStatus = document.getElementById("progress-status");
@@ -79,11 +75,6 @@
     hideError();
     sessionId = null;
     sessionFilename = null;
-
-    // Show file info panel
-    fileNameDisplay.textContent = file.name;
-    fileSizeDisplay.textContent = formatBytes(file.size);
-    fileInfoPanel.hidden = false;
 
     // Update drop zone appearance
     dropIcon.textContent = "✅";
@@ -186,21 +177,8 @@
       });
   });
 
-  // ── Clear button ──────────────────────────────────────────
-  btnClear.addEventListener("click", function (e) {
-    e.stopPropagation();
-    fileInput.value = "";
-    fileInfoPanel.hidden = true;
-    progressCont.hidden = true;
-    hideError();
-    sessionId = null;
-    sessionFilename = null;
-    dropIcon.textContent = "📂";
-    dropTitle.textContent = "Drag & drop your CSV here";
-    dropSub.textContent   = "or click to browse your files";
-    btnClean.disabled = true;
-    btnCleanTxt.textContent = "Upload & Clean Data";
-  });
+  // ── Clear: click the drop zone to reset ──────────────────────────
+  // (Picking a new file via the input naturally replaces the current selection.)
 
   // ── File input change ─────────────────────────────────────
   fileInput.addEventListener("change", function () {

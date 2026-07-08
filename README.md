@@ -37,6 +37,8 @@
 - [Pipeline Output Files](#-pipeline-output-files)
 - [Data Transformations](#-data-transformations)
 - [Pipeline Score](#-pipeline-score)
+- [Theming](#-theming)
+- [Continuous Integration](#-continuous-integration)
 - [Future Improvements](#-future-improvements)
 
 ---
@@ -53,7 +55,7 @@
 |---|---|
 | `clean_orders.csv` | Validated, standardised, enriched order records |
 | `pipeline_issues.csv` | Row-level log of every validation failure found |
-| `pipeline_summary.json` | Aggregate metrics: revenue, scores, status counts |
+| `pipeline_summary.json` | Aggregate metrics: scores, status counts |
 
 **Why this project?**
 Most portfolio projects only show *displaying* data. This project demonstrates the harder, more valuable skill: *cleaning and validating* data before it reaches any dashboard or downstream system — which is what real data engineering teams actually spend their time doing.
@@ -64,14 +66,18 @@ Most portfolio projects only show *displaying* data. This project demonstrates t
 
 - **Validation Engine** — 9 rules: required fields, date formats, numeric ranges, duplicate IDs, status and region standardisation
 - **Data Standardisation** — Normalises region aliases (`NE` → `Northeast`), status casings, customer IDs, and category titles
-- **Revenue Calculation** — Computes `revenue = quantity × unit_price` using `decimal.Decimal` (no float errors)
+- **Revenue Calculation** — Computes `revenue = quantity × unit_price` using `decimal.Decimal` (no float errors); used for the `priority_lane` flag
 - **Fulfillment Timing** — Calculates `fulfillment_days` from order date to ship date
-- **Priority Lane Flag** — Marks high-value or time-sensitive orders as `priority_lane: Yes`
+- **Priority Lane Flag** — Marks high-value (≥ $500) or time-sensitive orders as `priority_lane: Yes`
 - **Severity-based Filtering** — `high`-severity rows are rejected; `medium`-severity rows are kept and flagged
 - **Pipeline Score** — A 0–100 quality score based on issue count and severity
 - **Flask Web App** — Drag-and-drop CSV upload, progress bar, results dashboard, and download buttons
+- **Light / Dark Mode** — Theme toggle in the nav bar with localStorage persistence and `prefers-color-scheme` support
 - **Session Isolation** — Each upload gets its own UUID-keyed directory; sessions auto-expire after 2 hours
-- **Unit + Integration Tests** — Pipeline tests and full Flask route tests via `pytest`
+- **Security** — UUID path-traversal guard on all session routes; XSS-safe HTML report generation via `html.escape()`
+- **CSV Sniffer Validation** — Detects wrong delimiters and non-UTF-8 encodings at upload time
+- **Unit + Integration Tests** — 33 tests: 9 validation rule tests, edge cases (BOM, malformed CSV, multi-issue rows), Flask route tests
+- **GitHub Actions CI** — Runs `pytest`, `ruff`, `black`, and `mypy` on Python 3.11 and 3.12
 
 ---
 
@@ -312,7 +318,6 @@ pytest -v
 | Method | Route | Description |
 |---|---|---|
 | `GET` | `/` | Upload page |
-| `GET` | `/health` | Health check — returns JSON `{ status: "ok", version, timestamp }` |
 | `POST` | `/upload` | Accept a CSV file; returns `{ session_id, filename, size_bytes }` |
 | `POST` | `/clean` | Run ETL on a session file; returns `{ redirect: "/result/<id>" }` |
 | `GET` | `/result/<session_id>` | Results dashboard page |
@@ -382,8 +387,6 @@ Aggregate run metrics:
   "issues_found": 18,
   "high_severity_issues": 13,
   "pipeline_score": 46,
-  "total_revenue": "6002.50",
-  "revenue_by_region": { "Midwest": "...", "Northeast": "...", ... },
   "status_counts": { "Delivered": 4, "Shipped": 2, ... },
   "top_issue_fields": { "order_date": 3, ... }
 }
@@ -425,13 +428,42 @@ The sample dataset intentionally scores **46/100** to demonstrate the pipeline's
 
 ---
 
+## 🎨 Theming
+
+DataRefinery ships with a **light/dark mode toggle** accessible from the navigation bar.
+
+- **Toggle button** — Click the 🌙 / ☀️ icon in the top-right of the nav bar
+- **System preference** — If no preference has been set, the app defaults to whatever `prefers-color-scheme` your OS reports (dark for dark-mode systems, light otherwise)
+- **Persistence** — Your choice is saved in `localStorage` under the key `dr-theme` and applied on every subsequent page load
+- **No flash** — The theme is read and applied via a tiny blocking inline `<script>` in `<head>`, before the stylesheet is applied, so there is no flash of the wrong theme on page load
+- **Implementation** — Pure CSS custom properties (`[data-theme="light"]` overrides on `:root`). No JavaScript framework or external library required.
+
+---
+
+## ⚙️ Continuous Integration
+
+A GitHub Actions workflow runs on every push and pull request:
+
+**File:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+
+| Check | Tool | Scope |
+|---|---|---|
+| Unit + integration tests | `pytest` | `tests/` |
+| Linting | `ruff check .` | Entire repo |
+| Formatting | `black --check .` | Entire repo |
+| Static type checking | `mypy --strict` | `datapipeline/` |
+
+**Python versions tested:** 3.11 and 3.12 (matrix build, run in parallel)
+
+---
+
 ## 💡 Future Improvements
 
 - [ ] Add support for Excel (`.xlsx`) input files via `openpyxl`
-- [ ] Add a configurable rules file (JSON/YAML) so validation rules can be changed without editing source code
+- [x] Add a configurable rules file so validation rules can be changed without editing source code
 - [ ] Extend region aliases to support all US regions and international markets
 - [ ] Add a `--verbose` CLI flag for detailed per-row output
-- [ ] Add GitHub Actions CI workflow to run tests automatically on every push
+- [x] Add GitHub Actions CI workflow to run tests automatically on every push
 - [ ] Add Dockerfile for containerised deployment
 - [ ] Package `datapipeline` and publish to PyPI
 

@@ -70,10 +70,6 @@
       <div class="stat-val">{{ summary.duplicate_rows_removed }}</div>
       <div class="stat-label">Duplicates</div>
     </div>
-    <div class="stat-card stat-cyan">
-      <div class="stat-val">${{ summary.total_revenue }}</div>
-      <div class="stat-label">Total Revenue</div>
-    </div>
   </div>
 </section>
 
@@ -97,7 +93,7 @@
       <div class="dl-icon">📋</div>
       <div class="dl-body">
         <h3>HTML Report</h3>
-        <p>Full pipeline report with issue log, revenue breakdown, and quality score.</p>
+        <p>Full pipeline report with validation issues, status breakdown, and quality score.</p>
       </div>
       <a href="/download/report/{{ session_id }}" class="btn-download btn-report">
         Download Report
@@ -122,34 +118,6 @@
 <section class="detail-section">
   <div class="detail-grid">
 
-    <!-- Column changes -->
-    <div class="detail-card">
-      <h2 class="detail-title">Column Changes</h2>
-      <div class="col-comparison">
-        <div class="col-group">
-          <p class="col-group-label">Input ({{ summary.cols_before }} cols)</p>
-          <div class="col-tags">
-            {% for col in summary.columns_before %}
-              <span class="col-tag col-tag-before">{{ col }}</span>
-            {% endfor %}
-          </div>
-        </div>
-        <div class="col-arrow">→</div>
-        <div class="col-group">
-          <p class="col-group-label">Output ({{ summary.cols_after }} cols)</p>
-          <div class="col-tags">
-            {% for col in summary.columns_after %}
-              {% if col not in summary.columns_before %}
-                <span class="col-tag col-tag-new">{{ col }} ✦</span>
-              {% else %}
-                <span class="col-tag col-tag-after">{{ col }}</span>
-              {% endif %}
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Severity breakdown -->
     <div class="detail-card">
       <h2 class="detail-title">Issue Severity</h2>
@@ -158,7 +126,7 @@
           <span class="severity-label sev-high">HIGH</span>
           <div class="sev-bar-track">
             {% set high_pct = ((summary.high_severity_issues / summary.total_issues * 100) | round | int) if summary.total_issues > 0 else 0 %}
-            <div class="sev-bar-fill sev-fill-high" style="width: {{ high_pct }}%;"></div>
+            <div class="sev-bar-fill sev-fill-high" style="width: 0%;" data-width="{{ high_pct }}"></div>
           </div>
           <span class="sev-count">{{ summary.high_severity_issues }}</span>
         </div>
@@ -166,7 +134,7 @@
           <span class="severity-label sev-med">MED</span>
           <div class="sev-bar-track">
             {% set med_pct = ((summary.medium_severity_issues / summary.total_issues * 100) | round | int) if summary.total_issues > 0 else 0 %}
-            <div class="sev-bar-fill sev-fill-med" style="width: {{ med_pct }}%;"></div>
+            <div class="sev-bar-fill sev-fill-med" style="width: 0%;" data-width="{{ med_pct }}"></div>
           </div>
           <span class="sev-count">{{ summary.medium_severity_issues }}</span>
         </div>
@@ -182,27 +150,10 @@
   </div>
 </section>
 
-<!-- Revenue breakdown -->
-{% if summary.revenue_by_region %}
+<!-- Orders by Status -->
+{% if summary.status_counts %}
 <section class="detail-section">
   <div class="detail-grid">
-    <div class="detail-card">
-      <h2 class="detail-title">Revenue by Region</h2>
-      <table class="data-table">
-        <thead>
-          <tr><th>Region</th><th>Revenue</th></tr>
-        </thead>
-        <tbody>
-          {% for region, rev in summary.revenue_by_region.items() %}
-          <tr>
-            <td>{{ region }}</td>
-            <td class="mono">${{ rev }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
     <div class="detail-card">
       <h2 class="detail-title">Orders by Status</h2>
       <table class="data-table">
@@ -272,4 +223,19 @@
 </section>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Apply severity bar widths from data attributes to avoid inline style linting errors
+    document.querySelectorAll('.sev-bar-fill').forEach(function(el) {
+      if (el.dataset.width) {
+        setTimeout(function() {
+          el.style.width = el.dataset.width + '%';
+        }, 50);
+      }
+    });
+  });
+</script>
 {% endblock %}

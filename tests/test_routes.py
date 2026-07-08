@@ -29,21 +29,8 @@ def client(tmp_path):
         yield c
 
 
-# ── Health check ──────────────────────────────────────────────────────────────
-
-class TestHealth:
-    def test_health_returns_200(self, client):
-        resp = client.get("/health")
-        assert resp.status_code == 200
-
-    def test_health_returns_json(self, client):
-        resp = client.get("/health")
-        data = json.loads(resp.data)
-        assert data["status"] == "ok"
-        assert "timestamp" in data
-
-
 # ── Home page ─────────────────────────────────────────────────────────────────
+
 
 class TestHomePage:
     def test_home_returns_200(self, client):
@@ -56,6 +43,7 @@ class TestHomePage:
 
 
 # ── Upload endpoint ───────────────────────────────────────────────────────────
+
 
 class TestUpload:
     def _csv_bytes(self):
@@ -85,6 +73,7 @@ class TestUpload:
 
 
 # ── Clean endpoint ────────────────────────────────────────────────────────────
+
 
 class TestClean:
     def _upload_sample(self, client):
@@ -116,9 +105,15 @@ class TestClean:
         assert resp.status_code == 400
 
     def test_clean_unknown_session_returns_404(self, client):
+        # Use a valid UUID format that doesn't match any real session directory
         resp = client.post(
             "/clean",
-            data=json.dumps({"session_id": "nonexistent-id", "filename": "x.csv"}),
+            data=json.dumps(
+                {
+                    "session_id": "00000000-0000-4000-8000-000000000000",
+                    "filename": "x.csv",
+                }
+            ),
             content_type="application/json",
         )
         assert resp.status_code == 404
@@ -126,12 +121,15 @@ class TestClean:
 
 # ── Result page ───────────────────────────────────────────────────────────────
 
+
 class TestResult:
     def _process_sample(self, client):
         """Upload + clean the sample CSV and return session_id."""
         csv_bytes = SAMPLE_CSV.read_bytes()
         data = {"file": (io.BytesIO(csv_bytes), "raw_orders.csv")}
-        upload_resp = client.post("/upload", data=data, content_type="multipart/form-data")
+        upload_resp = client.post(
+            "/upload", data=data, content_type="multipart/form-data"
+        )
         body = json.loads(upload_resp.data)
         sid, fname = body["session_id"], body["filename"]
         client.post(
@@ -157,11 +155,14 @@ class TestResult:
 
 # ── Downloads ─────────────────────────────────────────────────────────────────
 
+
 class TestDownloads:
     def _process_sample(self, client):
         csv_bytes = SAMPLE_CSV.read_bytes()
         data = {"file": (io.BytesIO(csv_bytes), "raw_orders.csv")}
-        upload_resp = client.post("/upload", data=data, content_type="multipart/form-data")
+        upload_resp = client.post(
+            "/upload", data=data, content_type="multipart/form-data"
+        )
         body = json.loads(upload_resp.data)
         sid, fname = body["session_id"], body["filename"]
         client.post(
@@ -190,5 +191,6 @@ class TestDownloads:
         assert resp.content_type == "application/zip"
 
     def test_download_unknown_session_returns_404(self, client):
-        resp = client.get("/download/cleaned/bad-session-id")
+        # Use a valid UUID format that doesn't match any real session directory
+        resp = client.get("/download/cleaned/00000000-0000-4000-8000-000000000000")
         assert resp.status_code == 404

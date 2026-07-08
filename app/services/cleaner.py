@@ -12,11 +12,7 @@ core ETL logic. The pipeline itself is NOT modified.
 from __future__ import annotations
 
 import csv
-import io
-import json
-from dataclasses import asdict
 from datetime import datetime, timezone
-from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -106,20 +102,16 @@ class CleaningService:
 
         # Count missing values: any raw field that was blank before cleaning
         missing_found = sum(
-            1 for issue in result.issues
-            if "required" in issue.message.lower()
+            1 for issue in result.issues if "required" in issue.message.lower()
         )
 
         # Duplicate count
         duplicate_rows = sum(
-            1 for issue in result.issues
-            if "duplicate" in issue.message.lower()
+            1 for issue in result.issues if "duplicate" in issue.message.lower()
         )
 
         # Columns that were modified by the pipeline
-        modified_columns = list({
-            issue.field for issue in result.issues
-        })
+        modified_columns = list({issue.field for issue in result.issues})
 
         # Issues grouped by field for the UI table
         issues_by_field: dict[str, list[dict]] = {}
@@ -133,18 +125,14 @@ class CleaningService:
             issues_by_field.setdefault(issue.field, []).append(entry)
 
         # Output column count (may differ from input because pipeline adds computed fields)
-        out_columns = list(result.cleaned_rows[0].keys()) if result.cleaned_rows else raw_columns
-
-        # Revenue stats
-        revenues = [Decimal(row["revenue"]) for row in result.cleaned_rows]
-        avg_revenue = (sum(revenues) / len(revenues)) if revenues else Decimal("0")
-        max_revenue = max(revenues) if revenues else Decimal("0")
+        out_columns = (
+            list(result.cleaned_rows[0].keys()) if result.cleaned_rows else raw_columns
+        )
 
         return {
             # ── Identity ─────────────────────────────────────────────────
             "filename": input_path.name,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-
             # ── Before / After ───────────────────────────────────────────
             "rows_before": raw_rows,
             "cols_before": len(raw_columns),
@@ -152,28 +140,21 @@ class CleaningService:
             "rows_after": len(result.cleaned_rows),
             "cols_after": len(out_columns),
             "columns_after": out_columns,
-
             # ── Issues ───────────────────────────────────────────────────
             "missing_values_found": missing_found,
             "duplicate_rows_removed": duplicate_rows,
             "modified_columns": modified_columns,
             "total_issues": summary["issues_found"],
             "high_severity_issues": summary["high_severity_issues"],
-            "medium_severity_issues": summary["issues_found"] - summary["high_severity_issues"],
+            "medium_severity_issues": summary["issues_found"]
+            - summary["high_severity_issues"],
             "issues_by_field": issues_by_field,
-
             # ── Pipeline metrics ─────────────────────────────────────────
             "pipeline_score": summary["pipeline_score"],
             "rejected_records": summary["rejected_records"],
-
-            # ── Revenue stats ────────────────────────────────────────────
-            "total_revenue": summary["total_revenue"],
-            "avg_revenue": f"{avg_revenue:.2f}",
-            "max_revenue": f"{max_revenue:.2f}",
-            "revenue_by_region": summary["revenue_by_region"],
+            # ── Status / issue breakdown ─────────────────────────────────
             "status_counts": summary["status_counts"],
             "top_issue_fields": summary["top_issue_fields"],
-
             # ── Full pipeline summary (for ZIP download) ─────────────────
             "pipeline_summary": summary,
         }

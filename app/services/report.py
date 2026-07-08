@@ -8,6 +8,7 @@ opened in any browser without any external dependencies.
 
 from __future__ import annotations
 
+import html
 from datetime import datetime, timezone
 from typing import Any
 
@@ -28,16 +29,14 @@ class ReportService:
         """
         score = summary.get("pipeline_score", 0)
         score_color = (
-            "#22c55e" if score >= 90
-            else "#f59e0b" if score >= 70
-            else "#ef4444" if score >= 50
-            else "#dc2626"
+            "#22c55e"
+            if score >= 90
+            else "#f59e0b" if score >= 70 else "#ef4444" if score >= 50 else "#dc2626"
         )
         score_grade = (
-            "Excellent" if score >= 90
-            else "Good" if score >= 70
-            else "Fair" if score >= 50
-            else "Poor"
+            "Excellent"
+            if score >= 90
+            else "Good" if score >= 70 else "Fair" if score >= 50 else "Poor"
         )
 
         # Build issues table rows
@@ -51,24 +50,21 @@ class ReportService:
                 )
                 issues_html += f"""
                 <tr>
-                    <td>{e['row_number']}</td>
-                    <td>{e['order_id']}</td>
-                    <td><code>{field}</code></td>
+                    <td>{html.escape(str(e['row_number']))}</td>
+                    <td>{html.escape(str(e['order_id']))}</td>
+                    <td><code>{html.escape(str(field))}</code></td>
                     <td>{badge}</td>
-                    <td>{e['message']}</td>
+                    <td>{html.escape(str(e['message']))}</td>
                 </tr>"""
-
-        # Revenue by region rows
-        region_rows = ""
-        for region, rev in summary.get("revenue_by_region", {}).items():
-            region_rows += f"<tr><td>{region}</td><td>${rev}</td></tr>"
 
         # Status counts rows
         status_rows = ""
         for status, count in summary.get("status_counts", {}).items():
-            status_rows += f"<tr><td>{status}</td><td>{count}</td></tr>"
+            status_rows += f"<tr><td>{html.escape(str(status))}</td><td>{html.escape(str(count))}</td></tr>"
 
-        timestamp = summary.get("timestamp", datetime.now(timezone.utc).isoformat())
+        timestamp = html.escape(
+            str(summary.get("timestamp", datetime.now(timezone.utc).isoformat()))
+        )
 
         return f"""<!DOCTYPE html>
 <html lang="en">
@@ -134,14 +130,7 @@ class ReportService:
     <div class="card"><div class="value">{summary.get('cols_after', 0)}</div><div class="label">Cols (Output)</div></div>
     <div class="card"><div class="value">{summary.get('total_issues', 0)}</div><div class="label">Total Issues</div></div>
     <div class="card"><div class="value">{summary.get('duplicate_rows_removed', 0)}</div><div class="label">Duplicates</div></div>
-    <div class="card"><div class="value">${summary.get('total_revenue', '0.00')}</div><div class="label">Total Revenue</div></div>
   </div>
-
-  <h2>Revenue by Region</h2>
-  <table>
-    <tr><th>Region</th><th>Revenue</th></tr>
-    {region_rows if region_rows else '<tr><td colspan="2">No data</td></tr>'}
-  </table>
 
   <h2>Orders by Status</h2>
   <table>

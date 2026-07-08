@@ -10,8 +10,12 @@ from .pipeline import run_pipeline, write_reports
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the DataRefinery ETL workflow.")
-    parser.add_argument("--input", default="data/raw_orders.csv", help="Path to raw CSV order data.")
-    parser.add_argument("--out", default="reports", help="Directory where reports should be written.")
+    parser.add_argument(
+        "--input", default="data/raw_orders.csv", help="Path to raw CSV order data."
+    )
+    parser.add_argument(
+        "--out", default="reports", help="Directory where reports should be written."
+    )
     args = parser.parse_args()
 
     result = run_pipeline(Path(args.input))

@@ -1,9 +1,9 @@
 """
 DataRefinery — API Routes
 ===========================
-Handles file upload, pipeline processing, health checks,
-and file downloads. All state is managed per-session via UUID keys
-stored in URL parameters (stateless — no server-side session storage).
+Handles file upload, pipeline processing, and file downloads.
+All state is managed per-session via UUID keys stored in URL
+parameters (stateless — no server-side session storage).
 """
 
 from __future__ import annotations
@@ -12,8 +12,6 @@ import io
 import json
 import uuid
 import zipfile
-from datetime import datetime, timezone
-from pathlib import Path
 
 from flask import (
     Blueprint,
@@ -27,34 +25,32 @@ from werkzeug.utils import secure_filename
 
 from ..services.cleaner import CleaningService
 from ..services.report import ReportService
-from ..utils.file_helpers import validate_csv_file, get_session_dir, cleanup_old_sessions
+from ..utils.file_helpers import (
+    validate_csv_file,
+    get_session_dir,
+    cleanup_old_sessions,
+)
 
 api_bp = Blueprint("api", __name__)
 
 
-# ---------------------------------------------------------------------------
-# Health check
-# ---------------------------------------------------------------------------
+def _valid_session_id(session_id: str) -> bool:
+    """Return True if session_id is a valid version-4 UUID string.
 
-@api_bp.route("/health")
-def health() -> tuple:
+    This prevents path traversal attacks where a crafted session_id
+    (e.g. '../../../etc/passwd') could escape the uploads directory.
     """
-    GET /health — Returns application status.
-
-    Returns:
-        JSON response with status and timestamp.
-    """
-    return jsonify({
-        "status": "ok",
-        "app": current_app.config.get("APP_NAME", "DataRefinery"),
-        "version": current_app.config.get("APP_VERSION", "2.0.0"),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }), 200
+    try:
+        val = uuid.UUID(session_id, version=4)
+        return str(val) == session_id
+    except ValueError:
+        return False
 
 
 # ---------------------------------------------------------------------------
 # Upload
 # ---------------------------------------------------------------------------
+
 
 @api_bp.route("/upload", methods=["POST"])
 def upload() -> tuple:
@@ -68,7 +64,12 @@ def upload() -> tuple:
         JSON with { error } on failure (400 / 415).
     """
     if "file" not in request.files:
-        return jsonify({"error": "No file part in the request. Please attach a CSV file."}), 400
+        return (
+            jsonify(
+                {"error": "No file part in the request. Please attach a CSV file."}
+            ),
+            400,
+        )
 
     file = request.files["file"]
 
@@ -99,16 +100,22 @@ def upload() -> tuple:
     except Exception:
         pass  # Never let cleanup break an upload
 
-    return jsonify({
-        "session_id": session_id,
-        "filename": filename,
-        "size_bytes": save_path.stat().st_size,
-    }), 200
+    return (
+        jsonify(
+            {
+                "session_id": session_id,
+                "filename": filename,
+                "size_bytes": save_path.stat().st_size,
+            }
+        ),
+        200,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Clean / Process
 # ---------------------------------------------------------------------------
+
 
 @api_bp.route("/clean", methods=["POST"])
 def clean() -> tuple:
@@ -127,6 +134,9 @@ def clean() -> tuple:
 
     if not session_id or not filename:
         return jsonify({"error": "Missing session_id or filename."}), 400
+
+    if not _valid_session_id(session_id):
+        return jsonify({"error": "Invalid session ID format."}), 400
 
     session_dir = get_session_dir(current_app.config["UPLOAD_FOLDER"], session_id)
     input_path = session_dir / filename
@@ -150,6 +160,7 @@ def clean() -> tuple:
 # Result page
 # ---------------------------------------------------------------------------
 
+
 @api_bp.route("/result/<session_id>")
 def result(session_id: str) -> str | tuple:
     """
@@ -161,14 +172,20 @@ def result(session_id: str) -> str | tuple:
     Returns:
         Rendered result.html template, or 404 if session not found.
     """
+    if not _valid_session_id(session_id):
+        return jsonify({"error": "Invalid session ID format."}), 400
+
     session_dir = get_session_dir(current_app.config["UPLOAD_FOLDER"], session_id)
     summary_path = session_dir / "web_summary.json"
 
     if not summary_path.exists():
-        return render_template(
-            "index.html",
-            error="Session not found or expired. Please upload your file again."
-        ), 404
+        return (
+            render_template(
+                "index.html",
+                error="Session not found or expired. Please upload your file again.",
+            ),
+            404,
+        )
 
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     return render_template("result.html", summary=summary, session_id=session_id)
@@ -177,6 +194,7 @@ def result(session_id: str) -> str | tuple:
 # ---------------------------------------------------------------------------
 # Downloads
 # ---------------------------------------------------------------------------
+
 
 @api_bp.route("/download/cleaned/<session_id>")
 def download_cleaned(session_id: str) -> object:
@@ -189,6 +207,9 @@ def download_cleaned(session_id: str) -> object:
     Returns:
         CSV file attachment, or 404 JSON if not found.
     """
+    if not _valid_session_id(session_id):
+        return jsonify({"error": "Invalid session ID format."}), 400
+
     session_dir = get_session_dir(current_app.config["UPLOAD_FOLDER"], session_id)
     cleaned_path = session_dir / "clean_orders.csv"
 
@@ -214,6 +235,9 @@ def download_report(session_id: str) -> object:
     Returns:
         HTML file attachment, or 404 JSON if not found.
     """
+    if not _valid_session_id(session_id):
+        return jsonify({"error": "Invalid session ID format."}), 400
+
     session_dir = get_session_dir(current_app.config["UPLOAD_FOLDER"], session_id)
     summary_path = session_dir / "web_summary.json"
 
@@ -243,12 +267,18 @@ def download_zip(session_id: str) -> object:
     Returns:
         ZIP file attachment, or 404 JSON if the session is missing.
     """
+    if not _valid_session_id(session_id):
+        return jsonify({"error": "Invalid session ID format."}), 400
+
     session_dir = get_session_dir(current_app.config["UPLOAD_FOLDER"], session_id)
     cleaned_path = session_dir / "clean_orders.csv"
     summary_path = session_dir / "web_summary.json"
 
     if not cleaned_path.exists() or not summary_path.exists():
-        return jsonify({"error": "Session files not found. Please process a file first."}), 404
+        return (
+            jsonify({"error": "Session files not found. Please process a file first."}),
+            404,
+        )
 
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     report_html = ReportService.generate_html(summary)
@@ -260,7 +290,10 @@ def download_zip(session_id: str) -> object:
         zf.writestr("datapipeline_report.html", report_html)
         # Also include the raw JSON summary for power users
         zf.write(session_dir / "pipeline_issues.csv", arcname="pipeline_issues.csv")
-        zf.writestr("pipeline_summary.json", json.dumps(summary.get("pipeline_summary", {}), indent=2))
+        zf.writestr(
+            "pipeline_summary.json",
+            json.dumps(summary.get("pipeline_summary", {}), indent=2),
+        )
 
     buf.seek(0)
     return send_file(

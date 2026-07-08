@@ -11,6 +11,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
+  <!-- Blocking theme script: apply before first paint to avoid flash -->
+  <script>
+    (function () {
+      var stored = localStorage.getItem('dr-theme');
+      var preferred = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      var theme = stored || preferred;
+      if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    })();
+  </script>
+
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
   {% block head %}{% endblock %}
@@ -32,8 +42,10 @@
       </a>
       <div class="nav-links">
         <a href="/" class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}">Upload</a>
-        <a href="/health" class="nav-link" target="_blank" rel="noopener">Health</a>
-        <a href="https://github.com" class="nav-link" target="_blank" rel="noopener">GitHub</a>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" title="Toggle light/dark mode">
+          <span class="theme-icon theme-icon-dark">🌙</span>
+          <span class="theme-icon theme-icon-light">☀️</span>
+        </button>
       </div>
     </div>
   </nav>
@@ -70,5 +82,23 @@
   </footer>
 
   {% block scripts %}{% endblock %}
+
+  <!-- Theme toggle click handler -->
+  <script>
+    (function () {
+      var btn = document.getElementById('theme-toggle');
+      var html = document.documentElement;
+      btn.addEventListener('click', function () {
+        var isLight = html.getAttribute('data-theme') === 'light';
+        if (isLight) {
+          html.removeAttribute('data-theme');
+          localStorage.setItem('dr-theme', 'dark');
+        } else {
+          html.setAttribute('data-theme', 'light');
+          localStorage.setItem('dr-theme', 'light');
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

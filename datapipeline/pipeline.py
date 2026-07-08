@@ -1,5 +1,5 @@
 """
-BB DataRefinery — Core ETL Pipeline
+DataRefinery — Core ETL Pipeline
 =====================================
 
 Implements a single-pass CSV ETL workflow:
@@ -25,51 +25,17 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Iterable
 
-
-# ---------------------------------------------------------------------------
-# Constants — validation whitelists and alias maps
-# ---------------------------------------------------------------------------
-
-# All CSV columns that must be present and non-blank for a row to be accepted.
-REQUIRED_FIELDS = [
-    "order_id",
-    "customer_id",
-    "order_date",
-    "ship_date",
-    "region",
-    "category",
-    "quantity",
-    "unit_price",
-    "status",
-]
-
-# Maps lowercase status values (from raw data) → canonical display strings.
-# Any status not in this dict is treated as invalid (high-severity issue).
-VALID_STATUSES = {
-    "delivered": "Delivered",
-    "shipped": "Shipped",
-    "processing": "Processing",
-    "cancelled": "Cancelled",
-    "returned": "Returned",
-}
-
-# Maps common region abbreviations and alternate spellings → canonical names.
-# Lookup is always done after .strip().lower(), so case is irrelevant.
-REGION_ALIASES = {
-    "northeast": "Northeast",
-    "north east": "Northeast",
-    "ne": "Northeast",
-    "southeast": "Southeast",
-    "south east": "Southeast",
-    "se": "Southeast",
-    "midwest": "Midwest",
-    "west": "West",
-}
-
+from datapipeline.rules_config import (
+    PRIORITY_REVENUE_THRESHOLD,
+    REGION_ALIASES,
+    REQUIRED_FIELDS,
+    VALID_STATUSES,
+)
 
 # ---------------------------------------------------------------------------
 # Data containers
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class PipelineIssue:
@@ -84,6 +50,7 @@ class PipelineIssue:
         severity:   "high" causes the row to be rejected; "medium" is a warning.
         message:    A human-readable description of what went wrong.
     """
+
     row_number: int
     order_id: str
     field: str
@@ -99,8 +66,9 @@ class PipelineResult:
     Attributes:
         cleaned_rows: List of accepted, transformed row dicts ready for export.
         issues:       List of every PipelineIssue found across all rows.
-        summary:      Dict of aggregate metrics (revenue, scores, status counts, etc.).
+        summary:      Dict of aggregate metrics (scores, status counts, etc.).
     """
+
     cleaned_rows: list[dict[str, str]]
     issues: list[PipelineIssue]
     summary: dict[str, object]
@@ -109,6 +77,7 @@ class PipelineResult:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def run_pipeline(input_path: Path) -> PipelineResult:
     """
@@ -139,12 +108,18 @@ def run_pipeline(input_path: Path) -> PipelineResult:
         # ── Rule 1: Required field presence ───────────────────────────────
         for field in REQUIRED_FIELDS:
             if not row.get(field, "").strip():
-                row_issues.append(_issue(index, order_id, field, "high", f"{field} is required."))
+                row_issues.append(
+                    _issue(index, order_id, field, "high", f"{field} is required.")
+                )
 
         # ── Rule 2: Duplicate order ID detection ──────────────────────────
         if order_id:
             if order_id in seen_order_ids:
-                row_issues.append(_issue(index, order_id, "order_id", "high", "Duplicate order ID found."))
+                row_issues.append(
+                    _issue(
+                        index, order_id, "order_id", "high", "Duplicate order ID found."
+                    )
+                )
             seen_order_ids.add(order_id)
 
         # ── Rules 3–4: Date format and logical consistency ─────────────────
@@ -153,31 +128,87 @@ def run_pipeline(input_path: Path) -> PipelineResult:
         ship_date = _parse_date(row.get("ship_date", ""))
 
         if row.get("order_date") and order_date is None:
-            row_issues.append(_issue(index, order_id, "order_date", "high", "Order date is not a valid YYYY-MM-DD date."))
+            row_issues.append(
+                _issue(
+                    index,
+                    order_id,
+                    "order_date",
+                    "high",
+                    "Order date is not a valid YYYY-MM-DD date.",
+                )
+            )
         if row.get("ship_date") and ship_date is None:
-            row_issues.append(_issue(index, order_id, "ship_date", "high", "Ship date is not a valid YYYY-MM-DD date."))
+            row_issues.append(
+                _issue(
+                    index,
+                    order_id,
+                    "ship_date",
+                    "high",
+                    "Ship date is not a valid YYYY-MM-DD date.",
+                )
+            )
         if order_date and ship_date and ship_date < order_date:
             # A ship date before the order date is logically impossible.
-            row_issues.append(_issue(index, order_id, "ship_date", "high", "Ship date occurs before order date."))
+            row_issues.append(
+                _issue(
+                    index,
+                    order_id,
+                    "ship_date",
+                    "high",
+                    "Ship date occurs before order date.",
+                )
+            )
 
         # ── Rules 5–6: Numeric range validation ───────────────────────────
         quantity = _parse_decimal(row.get("quantity", ""))
         unit_price = _parse_decimal(row.get("unit_price", ""))
 
         if row.get("quantity") and (quantity is None or quantity <= 0):
-            row_issues.append(_issue(index, order_id, "quantity", "high", "Quantity must be greater than zero."))
+            row_issues.append(
+                _issue(
+                    index,
+                    order_id,
+                    "quantity",
+                    "high",
+                    "Quantity must be greater than zero.",
+                )
+            )
         if row.get("unit_price") and (unit_price is None or unit_price <= 0):
-            row_issues.append(_issue(index, order_id, "unit_price", "high", "Unit price must be greater than zero."))
+            row_issues.append(
+                _issue(
+                    index,
+                    order_id,
+                    "unit_price",
+                    "high",
+                    "Unit price must be greater than zero.",
+                )
+            )
 
         # ── Rule 7: Status whitelist validation ───────────────────────────
         status = _clean_status(row.get("status", ""))
         if row.get("status") and status is None:
-            row_issues.append(_issue(index, order_id, "status", "high", "Status is outside the expected values."))
+            row_issues.append(
+                _issue(
+                    index,
+                    order_id,
+                    "status",
+                    "high",
+                    "Status is outside the expected values.",
+                )
+            )
 
         # ── Rule 8: Region alias resolution (medium — row is kept) ────────
         region = _clean_region(row.get("region", ""))
         if row.get("region") and region is None:
-            row_issues.append(_issue(index, order_id, "region", "medium", "Region could not be standardized."))
+            row_issues.append(
+                _issue(
+                    index,
+                    order_id,
+                    "region",
+                    "medium",
+                    "Region could not be standardized.",
+                )
+            )
 
         # Accumulate all issues for this row into the master list.
         issues.extend(row_issues)
@@ -230,6 +261,7 @@ def write_reports(result: PipelineResult, output_dir: Path) -> None:
 # Private helpers — Extract
 # ---------------------------------------------------------------------------
 
+
 def _read_csv(path: Path) -> list[dict[str, str]]:
     """
     Read a CSV file and return all rows as a list of dicts.
@@ -244,7 +276,7 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
     Returns:
         List of row dicts. Empty list if the file contains only a header.
     """
-    with path.open(newline="", encoding="utf-8") as csv_file:
+    with path.open(newline="", encoding="utf-8-sig") as csv_file:
         return list(csv.DictReader(csv_file))
 
 
@@ -252,7 +284,10 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
 # Private helpers — Validation
 # ---------------------------------------------------------------------------
 
-def _issue(row_number: int, order_id: str, field: str, severity: str, message: str) -> PipelineIssue:
+
+def _issue(
+    row_number: int, order_id: str, field: str, severity: str, message: str
+) -> PipelineIssue:
     """
     Convenience constructor for PipelineIssue.
 
@@ -355,6 +390,7 @@ def _clean_region(value: str) -> str | None:
 # Private helpers — Transform
 # ---------------------------------------------------------------------------
 
+
 def _transform_row(
     row: dict[str, str],
     order_date: date | None,
@@ -415,13 +451,18 @@ def _transform_row(
         # Canonical status from whitelist, or title-cased original if medium-only.
         "status": status or row.get("status", "").strip().title(),
         # Priority lane marks high-value or time-sensitive orders for expedited handling.
-        "priority_lane": "Yes" if revenue >= Decimal("500") or status == "Processing" else "No",
+        "priority_lane": (
+            "Yes"
+            if revenue >= PRIORITY_REVENUE_THRESHOLD or status == "Processing"
+            else "No"
+        ),
     }
 
 
 # ---------------------------------------------------------------------------
 # Private helpers — Summarise
 # ---------------------------------------------------------------------------
+
 
 def _build_summary(
     raw_rows: list[dict[str, str]],
@@ -437,23 +478,16 @@ def _build_summary(
         issues:       All PipelineIssue objects collected during the run.
 
     Returns:
-        A dict suitable for JSON serialisation containing counts, revenue
-        breakdowns, status distributions, top issue fields, and a pipeline score.
+        A dict suitable for JSON serialisation containing counts, status
+        distributions, top issue fields, and a pipeline score.
     """
-    # Sum revenue across all accepted rows. Uses Decimal for exact arithmetic.
-    total_revenue = sum(Decimal(row["revenue"]) for row in cleaned_rows) if cleaned_rows else Decimal("0")
-
     # Count issues grouped by field name and by severity level.
     issue_fields = _count_by((issue.field for issue in issues))
     severity_counts = _count_by((issue.severity for issue in issues))
 
-    # Revenue and order count per region and per status.
-    revenue_by_region: dict[str, Decimal] = {}
+    # Order count per status.
     status_counts: dict[str, int] = {}
     for row in cleaned_rows:
-        revenue_by_region[row["region"]] = (
-            revenue_by_region.get(row["region"], Decimal("0")) + Decimal(row["revenue"])
-        )
         status_counts[row["status"]] = status_counts.get(row["status"], 0) + 1
 
     # Pipeline score: starts at 100, deducted for each issue.
@@ -468,12 +502,11 @@ def _build_summary(
         "issues_found": len(issues),
         "high_severity_issues": severity_counts.get("high", 0),
         "pipeline_score": pipeline_score,
-        "total_revenue": f"{total_revenue:.2f}",
-        # Sorted alphabetically for deterministic, diffable output.
-        "revenue_by_region": {key: f"{value:.2f}" for key, value in sorted(revenue_by_region.items())},
         "status_counts": dict(sorted(status_counts.items())),
         # Top 5 fields most frequently causing issues — useful for targeted data quality improvements.
-        "top_issue_fields": dict(sorted(issue_fields.items(), key=lambda item: item[1], reverse=True)[:5]),
+        "top_issue_fields": dict(
+            sorted(issue_fields.items(), key=lambda item: item[1], reverse=True)[:5]
+        ),
     }
 
 
@@ -498,6 +531,7 @@ def _count_by(values: Iterable[str]) -> dict[str, int]:
 # ---------------------------------------------------------------------------
 # Private helpers — Load (write outputs)
 # ---------------------------------------------------------------------------
+
 
 def _write_clean_orders(rows: list[dict[str, str]], path: Path) -> None:
     """

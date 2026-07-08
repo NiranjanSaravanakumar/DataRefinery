@@ -26,7 +26,10 @@ def validate_csv_file(file: FileStorage) -> str | None:
     Checks:
       1. File extension is `.csv`
       2. File is non-empty (at least a header row)
-      3. First few rows can be parsed as CSV without error
+      3. No encoding issues (UTF-8; BOM is accepted and stripped by the pipeline)
+      4. Delimiter sniff — warns if the content does not appear to be
+         comma-separated (wrong delimiter, binary data, etc.)
+      5. First few rows can be parsed as CSV without error
 
     Args:
         file: The Werkzeug FileStorage object from the request.
@@ -39,28 +42,54 @@ def validate_csv_file(file: FileStorage) -> str | None:
     # --- Extension check ---
     if not filename.lower().endswith(".csv"):
         return (
-            f"Invalid file type: '{filename}'. "
-            "Only CSV files (.csv) are accepted."
+            f"Invalid file type: '{filename}'. " "Only CSV files (.csv) are accepted."
         )
 
-    # --- Readability check (probe first few rows) ---
+    # --- Readability check (probe first chunk) ---
     try:
-        # Read a limited chunk to avoid loading the entire file into memory
+        # Read a limited chunk to avoid loading the entire file into memory.
         chunk = file.read(65536)  # 64 KB is enough to detect encoding/format issues
         file.seek(0)
 
         if not chunk.strip():
             return "The uploaded file is empty. Please upload a CSV file with data."
 
-        # Decode and parse
-        text = chunk.decode("utf-8", errors="replace")
+        # --- Encoding check ---
+        # Attempt strict UTF-8 decode (BOM prefix b'\xef\xbb\xbf' is also OK — the
+        # pipeline uses utf-8-sig which strips it automatically).
+        try:
+            text = chunk.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            return (
+                "The file contains characters that cannot be decoded as UTF-8. "
+                "Please save your CSV with UTF-8 encoding and try again."
+            )
+
+        # --- Delimiter / structure sniff ---
+        # Use csv.Sniffer on the first 2 KB. If it cannot detect a delimiter or
+        # detects something other than a comma, the file is likely not a valid CSV.
+        sample = text[:2048]
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
+            if dialect.delimiter != ",":
+                return (
+                    f"The file appears to use '{dialect.delimiter}' as a delimiter "
+                    "instead of a comma. Please export your file as a comma-separated "
+                    "CSV and try again."
+                )
+        except csv.Error:
+            # Sniffer failure means very few rows or unusual structure — fall through
+            # and let the DictReader probe below catch actual parse errors.
+            pass
+
+        # --- Header + row parse check ---
         reader = csv.DictReader(io.StringIO(text))
         header = reader.fieldnames
 
         if not header:
             return "The CSV file has no header row. Please ensure the first row contains column names."
 
-        # Try to read a few rows to catch malformed CSV structures
+        # Try to read a few rows to catch malformed CSV structures (ragged rows, etc.)
         for _ in zip(reader, range(_PROBE_ROWS)):
             pass
 
