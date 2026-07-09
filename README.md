@@ -16,11 +16,6 @@
 
 ---
 
-## 📸 Dashboard Preview
-
-![DataRefinery Dashboard](assets/datapipeline-dashboard.png)
-
----
 
 ## 📋 Table of Contents
 
